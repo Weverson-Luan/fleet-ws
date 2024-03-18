@@ -1,6 +1,8 @@
 import React from "react";
-import { Text, View } from "react-native";
 import { Container, Title, Slogan } from "./styles";
+
+import { Button } from "../../components/button";
+
 import backgroundImg from "../../common/images/background.png";
 
 export function SignIn() {
@@ -10,11 +12,7 @@ export function SignIn() {
 
       <Slogan>Gestão de uso de veículos</Slogan>
 
-      {/* <Button
-        title="Entrar com Google"
-        onPress={handleGoogleSignIn}
-        isLoading={isAuthenticating}
-      /> */}
+      <Button title="Entrar com Google" onPress={() => {}} isLoading={false} />
     </Container>
   );
 }
