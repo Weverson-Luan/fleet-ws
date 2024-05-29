@@ -1,20 +1,55 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+/**
+ * IMPORTS
+ */
+import "react-native-get-random-values";
+import "./src/libs/dayjs";
+
+import { StatusBar } from "react-native";
+import { AppProvider, UserProvider } from "@realm/react";
+
+import { ThemeProvider } from "styled-components/native";
+import {
+  useFonts,
+  Roboto_400Regular,
+  Roboto_700Bold,
+} from "@expo-google-fonts/roboto";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
+import theme from "./src/theme";
+
+import { SignIn } from "./src/screen/signin";
+
+import { Loading } from "./src/components/loading";
+
+import { REALM_APP_ID } from "@env";
+import { Routes } from "./src/routes";
+import { RealmProvider } from "./src/libs/realm";
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ Roboto_400Regular, Roboto_700Bold });
+
+  if (!fontsLoaded) {
+    return <Loading />;
+  }
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <AppProvider id={REALM_APP_ID}>
+      <ThemeProvider theme={theme}>
+        <SafeAreaProvider
+          style={{ flex: 1, backgroundColor: theme.COLORS.GRAY_800 }}
+        >
+          <StatusBar
+            barStyle={"light-content"}
+            backgroundColor={"transparent"}
+            translucent
+          />
+
+          <UserProvider fallback={SignIn}>
+            <RealmProvider>
+              <Routes />
+            </RealmProvider>
+          </UserProvider>
+        </SafeAreaProvider>
+      </ThemeProvider>
+    </AppProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
