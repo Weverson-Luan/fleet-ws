@@ -8,8 +8,10 @@ import { Alert, FlatList } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 
 import dayjs from "dayjs";
+import Toast from "react-native-toast-message";
 
 // realm
+import { Realm } from "@realm/react";
 import { Historic } from "../../libs/realm/schemas/Historic";
 import { useQuery, useRealm } from "../../libs/realm";
 
@@ -20,17 +22,27 @@ import { HeaderHome } from "../../components/header-home";
 // styles
 import { Container, Content, Label } from "./styles";
 import { HistoricCard, HistoricCardProps } from "../../components/history-card";
+import { useUser } from "@realm/react";
+import {
+  getLastAsyncTimestamp,
+  saveLastSyncTimestamp,
+} from "../../libs/async-storage";
+import { TopMessage } from "../../components/top-message";
+import { CloudArrowUp } from "phosphor-react-native";
 
 export function Home() {
   const { navigate } = useNavigation();
 
   const historic = useQuery(Historic);
+  const user = useUser();
+
   const realm = useRealm();
 
   const [vehicleInUse, setvehicle] = useState<Historic | null>(null);
   const [vehicleHistoric, setVehicleHistoric] = useState<HistoricCardProps[]>(
     []
   );
+  const [percentageToSync, setPercentageToSync] = useState<string | null>(null);
 
   const handleRegisterMovement = () => {
     if (vehicleInUse?._id) {
@@ -59,17 +71,18 @@ export function Home() {
   /**
    * Buscando historico de uso dos veiuclos
    */
-  function fetchHistoric() {
+  async function fetchHistoric() {
     try {
       const response = historic.filtered(
         "status = 'arrival' SORT(created_at DESC)"
       );
 
+      const lastSync = await getLastAsyncTimestamp();
       const formattedHistoric = response.map((item) => {
         return {
           id: item._id.toString(),
           licensePlate: item.license_plate,
-          isSync: false,
+          isSync: lastSync > item.updated_at!.getTime(),
           created: dayjs(item.created_at).format(
             "[Saída em] DD/MM/YYYY [às] HH:mm"
           ),
@@ -91,6 +104,28 @@ export function Home() {
     navigate("arrival", { id: id });
   };
 
+  async function progressNotification(
+    transferred: number,
+    transferable: number
+  ) {
+    const percentage = (transferred / transferable) * 100;
+
+    if (percentage === 100) {
+      await saveLastSyncTimestamp();
+
+      await fetchHistoric();
+      setPercentageToSync(null);
+      Toast.show({
+        type: "info",
+        text1: "Todos os dados estão sincronizados",
+      });
+    }
+
+    if (percentage < 100) {
+      setPercentageToSync(`${percentage.toFixed(0)}% sincronizado.`);
+    }
+  }
+
   useEffect(() => {
     fetchHistoric();
   }, [historic]);
@@ -108,8 +143,39 @@ export function Home() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    realm.subscriptions.update((mutableSubs, realm) => {
+      const historicByUserQuery = realm
+        .objects("Historic")
+        .filtered(`user_id = '${user.id}'`);
+
+      mutableSubs.add(historicByUserQuery, { name: "hostoric_by_user" });
+    });
+  }, [realm]);
+
+  useEffect(() => {
+    const syncSession = realm.syncSession;
+
+    if (!syncSession) {
+      return;
+    }
+
+    syncSession.addProgressNotification(
+      Realm.ProgressDirection.Upload,
+      Realm.ProgressMode.ReportIndefinitely,
+      progressNotification
+    );
+
+    return () => {
+      syncSession.removeProgressNotification(progressNotification);
+    };
+  }, []);
   return (
     <Container>
+      {percentageToSync && (
+        <TopMessage title={percentageToSync} icon={CloudArrowUp} />
+      )}
       <HeaderHome />
 
       <Content>
