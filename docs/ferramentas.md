@@ -3,7 +3,7 @@
 ## Styled-Components
 
 1 - npm install styled-components
- 2 - npm install --save-dev @types/styled-components @types/styled-components-react-native
+2 - npm install --save-dev @types/styled-components @types/styled-components-react-native
 
 ## Fontes
 
@@ -46,8 +46,8 @@
 ## REACT-NAVIGATION
 
 1 - npm install @react-navigation/native
-  2 - npx expo install react-native-screens react-native-safe-area-context
-    3 - npm install @react-navigation/native-stack
+2 - npx expo install react-native-screens react-native-safe-area-context
+3 - npm install @react-navigation/native-stack
 
 ## DayJs
 
@@ -68,3 +68,8 @@
 ## React Native Toast Message
 
 1 - npm i react-native-toast-message
+
+## Mapas
+
+ 1 - npx expo install expo-location
+ 2 - npx expo install react-native-maps
