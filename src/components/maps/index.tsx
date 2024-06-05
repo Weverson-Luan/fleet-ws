@@ -23,7 +23,7 @@ export function Map({ coordinates, ...rest }: Props) {
    * Função para reposicionar os marcadores em tela
    */
   async function onMapLoaded() {
-    if (coordinates.length > 1) {
+    if (coordinates?.length > 1) {
       mapRef.current?.fitToSuppliedMarkers(["departure", "arrival"], {
         edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
       });

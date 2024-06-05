@@ -3,10 +3,11 @@
  */
 import { reverseGeocodeAsync, LocationObjectCoords } from "expo-location";
 
-async function getAddressLocation({
-  latitude,
-  longitude,
-}: LocationObjectCoords) {
+type IType = {
+  latitude: number;
+  longitude: number;
+};
+async function getAddressLocation({ latitude, longitude }: IType) {
   try {
     const addressResponse = await reverseGeocodeAsync({ latitude, longitude });
 

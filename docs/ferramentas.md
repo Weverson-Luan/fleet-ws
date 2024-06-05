@@ -73,3 +73,7 @@
 
  1 - npx expo install expo-location
  2 - npx expo install react-native-maps
+
+## Taks Manager
+
+1 - npx expo install expo-task-manager

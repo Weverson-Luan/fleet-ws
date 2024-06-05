@@ -21,6 +21,16 @@ import { Historic } from "../../libs/realm/schemas/Historic";
 import { BSON } from "realm";
 import { Alert } from "react-native";
 import { getLastAsyncTimestamp } from "../../libs/async-storage";
+import { stopLocationTask } from "../../tasks/backgroundLocationTask";
+import { getStorageLocation } from "../../libs/async-storage/location-storage";
+import { LatLng } from "react-native-maps";
+import { Map } from "../../components/maps";
+import { Locations } from "../../components/location";
+import { getAddressLocation } from "../../utils/get-address-location/get-address-location";
+import { LocationInfoProps } from "../../components/location-info";
+import dayjs from "dayjs";
+import { LoadIndicator } from "../../components/loading/styles";
+import { Loading } from "../../components/loading";
 
 type IRouteParasmProps = {
   params: {
@@ -38,6 +48,12 @@ const Arrival = () => {
   );
 
   const [dataNotSynced, setDataNotSynced] = useState(false);
+  const [coordinates, setCoordinates] = useState<LatLng[]>([]);
+  const [departure, setDeparture] = useState<LocationInfoProps>(
+    {} as LocationInfoProps
+  );
+  const [arrival, setArrival] = useState<LocationInfoProps | null>(null);
+  const [isLoading, setIsloading] = useState(true);
 
   const title = historic?.status === "departure" ? "Chegada" : "Detalhes";
 
@@ -53,10 +69,12 @@ const Arrival = () => {
     ]);
   };
 
-  const handleRemoveVehicleUsage = () => {
+  const handleRemoveVehicleUsage = async () => {
     realm.write(() => {
       realm.delete(historic);
     });
+
+    await stopLocationTask();
 
     goBack();
   };
@@ -64,7 +82,7 @@ const Arrival = () => {
   /**
    * Função que faz o resgistro de uma cgeado do veiculo
    */
-  const handleArrivalRegister = () => {
+  const handleArrivalRegister = async () => {
     try {
       if (!historic) {
         return Alert.alert(
@@ -73,10 +91,15 @@ const Arrival = () => {
         );
       }
 
+      const locations = await getStorageLocation();
+
       realm.write(() => {
         historic.status = "arrival";
         historic.updated_at = new Date();
+        historic.coords.push(...locations);
       });
+
+      await stopLocationTask();
 
       Alert.alert("Chegada", "Chega registrada com sucesso!");
 
@@ -90,16 +113,79 @@ const Arrival = () => {
     }
   };
 
+  async function getLocationsInfo() {
+    if (!historic) {
+      return;
+    }
+
+    const lastSync = await getLastAsyncTimestamp();
+    const updatedAt = historic!.updated_at.getTime();
+
+    setDataNotSynced(updatedAt > lastSync);
+
+    if (historic.status === "departure") {
+      const locationStorage = await getStorageLocation();
+
+      setCoordinates(locationStorage);
+    } else {
+      const last = historic?.coords.map((item) => {
+        return {
+          latitude: item.latitude,
+          longitude: item.longitude,
+        };
+      });
+
+      setCoordinates(last);
+    }
+
+    if (historic.coords[0]) {
+      const departureStreeName = await getAddressLocation(historic.coords[0]);
+
+      setDeparture({
+        description: dayjs(new Date(historic?.coords[0]?.timestamp!)).format(
+          "DD/MM/YYYY [ás] HH:mm"
+        ),
+        label: `Saindo em ${departureStreeName}`,
+      });
+    }
+
+    if (historic.status === "arrival") {
+      const lastLocation = historic.coords[historic.coords.length - 1];
+
+      const arrivalStreeName = await getAddressLocation(lastLocation);
+      setArrival({
+        description: dayjs(new Date(lastLocation?.timestamp!)).format(
+          "DD/MM/YYYY [ás] HH:mm"
+        ),
+        label: `Chegando em ${arrivalStreeName ?? ""}`,
+      });
+    }
+
+    setIsloading(false);
+  }
+
   useEffect(() => {
-    getLastAsyncTimestamp().then((lastSync) =>
-      setDataNotSynced(historic!.updated_at.getTime() > lastSync)
-    );
-  }, []);
+    getLocationsInfo();
+  }, [historic]);
+
+  if (isLoading) {
+    return <Loading />;
+  }
   return (
     <Container>
       <Header title={title} />
 
+      {coordinates?.length > 0 && <Map coordinates={coordinates} />}
+
       <Content>
+        <Locations
+          departure={{
+            label: departure.label,
+            description: departure.description,
+          }}
+          arrival={arrival}
+        />
+
         <Label>Placa do veículo</Label>
 
         <LicensePlate>{historic?.license_plate}</LicensePlate>

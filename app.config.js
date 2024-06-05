@@ -19,6 +19,11 @@ module.exports = {
       "supportsTablet": true,
       "config": {
         "googleMapsApiKey": ""
+      },
+      "infoPlist": {
+
+        
+        "UIBackgroundModes": ["location"]
       }
     },
     "android": {
@@ -33,7 +38,7 @@ module.exports = {
         } 
       },
       "permissions": [
-        "ACCESS_FINE_LOCATION",
+        "ACCESS_FINE_LOCATION",// OBETER ACESSO LOCALIZAÇÃO + PRECISA
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
       ],

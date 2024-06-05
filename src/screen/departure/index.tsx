@@ -43,9 +43,11 @@ import { Historic } from "../../libs/realm/schemas/Historic";
 import { licensePlateValidate } from "../../utils/license-plate-validate";
 
 // styles
-import { Container, Content, Message } from "./styles";
+import { Container, Content, Message, MessageContent } from "./styles";
 import { getAddressLocation } from "../../utils/get-address-location/get-address-location";
 import { Map } from "../../components/maps";
+import { startLocationTask } from "../../tasks/backgroundLocationTask";
+import { openSettings } from "../../utils/open-settings/open-setings";
 
 const keyboardAvoidViewBehavior =
   Platform.OS === "android" ? "height" : "position";
@@ -76,6 +78,7 @@ export function Departure() {
    */
   const handleDepartureRegister = async () => {
     try {
+      // validação da placa do veículo
       if (!licensePlateValidate(licensePlate)) {
         licensePLateRef.current?.focus();
         return Alert.alert(
@@ -84,6 +87,7 @@ export function Departure() {
         );
       }
 
+      // validação da decrição
       if (description.trim().length === 0) {
         descriptionRef.current?.focus();
         return Alert.alert(
@@ -92,10 +96,11 @@ export function Departure() {
         );
       }
 
+      // validação da minhas cordenadas
       if (!currentCoords?.latitude && !currentCoords?.longitude) {
         return Alert.alert(
           "Localização",
-          "Não foi possível obter a localização atual. Tente novamente."
+          "Não foi possível obter a localização atual. Tente novamente!"
         );
       }
 
@@ -103,13 +108,17 @@ export function Departure() {
 
       const backgroundPermissions = await requestBackgroundPermissionsAsync();
 
+      // validação para permisão em background de localização
       if (!backgroundPermissions.granted) {
         setIsRegistring(false);
         return Alert.alert(
           "Localização",
-          'É necessário permitir que o App tenha acesso localização em segundo plano. Acesse as configurações do dispositivo e habilite "Permitir o tempo todo."'
+          'É necessário permitir que o App tenha acesso localização em segundo plano. Acesse as configurações do dispositivo e habilite "Permitir o tempo todo."',
+          [{ text: "Abrir configurações", onPress: openSettings }]
         );
       }
+
+      await startLocationTask();
 
       realm.write(() => {
         realm.create(
@@ -118,6 +127,13 @@ export function Departure() {
             user_id: id,
             license_plate: licensePlate.toUpperCase(),
             description,
+            coords: [
+              {
+                latitude: currentCoords.latitude,
+                longitude: currentCoords.longitude,
+                timestamp: new Date().getTime(),
+              },
+            ],
           })
         );
       });
@@ -158,7 +174,7 @@ export function Departure() {
       },
       (location) => {
         setCurrentCoords(location.coords);
-        console.log("address", location.coords);
+        // console.log("address", location.coords);
 
         getAddressLocation(location.coords).then((address) => {
           if (address) {
@@ -183,11 +199,15 @@ export function Departure() {
     return (
       <Container>
         <Header title="Saída" />
-        <Message>
-          Você precisa permitir que o aplicativo tenha acesso a localização para
-          acessar essa funcionalidade. Por favor, acesse as configurações do seu
-          dispositivo para conceder a permissão ao aplicativo.
-        </Message>
+        <MessageContent>
+          <Message>
+            Você precisa permitir que o aplicativo tenha acesso a localização
+            para acessar essa funcionalidade. Por favor, acesse as configurações
+            do seu dispositivo para conceder a permissão ao aplicativo.
+          </Message>
+
+          <Button title="Abrir configurações" onPress={openSettings} />
+        </MessageContent>
       </Container>
     );
   }
